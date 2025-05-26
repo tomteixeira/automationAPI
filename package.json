@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "build": "tsc",
-    "start": "tsc script.ts",
-    "run": "npm run start && node script.js",
+    "start": "tsc ./script.ts",
+    "run": "npm run start && node ./script.js",
     "clean": "rm *.js *.d.ts"
   },
   "devDependencies": {

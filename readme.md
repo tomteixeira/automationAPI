@@ -16,6 +16,7 @@ There is a debug mode -> If you add a third parameter to true.
     const client = new AutomationAPI(client_id, client_secret);
     await client.init();
 ```
+If you want to reuse the original script, create a .env file and add to it CLIENT_ID='' and CLIENT_SECRET='' with the correct information.
 
 ## All the methods 
 

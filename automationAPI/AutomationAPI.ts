@@ -1,33 +1,37 @@
+import { init } from "./utils/init";
+import { fetchData } from './utils/fetch'
+import { getAllSiteCode, getAllSiteID } from './site/getter'
+
 const axios = require('axios');
 
-interface segment {
-
-}
-
-interface segmentConfiguration {
-    siteId: number, 
+ type AAtest = {
     name: string, 
-    segmentType: string,
-    conditionsData: segment, 
-    audienceTracking?: (boolean | undefined),
-    description?: (string | undefined), 
-    tags?: (Array<string> | undefined), 
-    isFavorite?: (boolean | undefined)
-
-}
+    siteId: number,
+    goals: number[],
+    baseURL: string,
+    targetingConfiguration: string,
+    type: string,
+    mainGoalId: number
+ }
 
 class AutomationAPI {
-    private debug?: boolean;
-    private client_id: string;
-    private client_secret: string;
-    private access_token: string;
-    private config: object = {
+    protected debug?: boolean;
+    protected client_id: string;
+    protected client_secret: string;
+    protected access_token: string;
+    protected config: object = {
         method: '',
         url: '',
         headers: {},
         data: '',
         maxBodyLength: Infinity,
     };
+
+    init = init; // function to initiate the process
+    protected fetchData = fetchData // function to fetch the data to the original automation API
+
+    getAllSiteCode = getAllSiteCode;
+    getAllSiteID = getAllSiteID;
 
     constructor(id: string, secret: string, debug?: boolean) {
         this.client_id = id;
@@ -39,50 +43,101 @@ class AutomationAPI {
         }
     }
 
-    async init() {
-        if (this.debug) console.log("Initializing API...");
 
+
+    async createAAtest(config: AAtest){
         try {
-            const bodyAccessToken = `grant_type=client_credentials&client_id=${this.client_id}&client_secret=${this.client_secret}`;
+            const method = 'post';
+            const url = `https://api.kameleoon.com/experiments`;
             const headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json', 
+                'Accept': '*/*',
+                'Authorization': `Bearer ${this.access_token}`,
             };
+            let data = JSON.stringify({
+                name: config.name,
+                siteId: config.siteId,
+                goals: config.goals,
+                baseURL: config.baseURL,
+                targetingConfiguration: config.targetingConfiguration,
+                type: config.type, 
+                mainGoalId: config.mainGoalId
+            });
 
             if (this.debug) {
-                console.log("Requesting access token with the following details:");
+                console.log("Creating new aa test with the following details:");
                 console.log("Headers:", headers);
-                console.log("Body:", bodyAccessToken);
             }
 
-            let response = await this.fetchData('post', 'https://api.kameleoon.com/oauth/token', headers, bodyAccessToken);
+            let response = await this.fetchData(method, url, headers, data);
 
-            if (this.debug) console.log("Access token received:", response);
+            if (this.debug) console.log("Response for creating aa test:", response);
 
-            this.access_token = response.access_token;
+
         } catch (error) {
-            console.error("Error during initialization:", error);
+            console.error("Error while create aa test :", error);
         }
     }
 
-    async getAllSiteID() {
-        if (this.debug) console.log("Fetching all site IDs...");
+    async getGoalId() {
+        try {
+        const method = 'get';
+        const url = `https://api.kameleoon.com/goals?page=1&perPage=200`;
+        const url2 = `https://api.kameleoon.com/goals?page=2&perPage=200`;
+        const headers = {
+            'Accept': '*/*',
+            'Authorization': `Bearer ${this.access_token}`,
+        };
+
+        if (this.debug) {
+            console.log("Requesting segments Ids with the following details:");
+            console.log("Headers:", headers);
+        }
+
+        let response = await this.fetchData(method, url, headers, '');
+        let response2 = await this.fetchData(method, url2, headers, '');
+
+        let allSiteID: Array<number> = [];
+        response.forEach((site) => {
+            if (site.id) {
+                allSiteID.push(site.id);
+            }
+        
+        });
+        response2.forEach((site) => {
+            if (site.id) {
+                allSiteID.push(site.id);
+            }
+        
+        });
+
+        if (this.debug) console.log("Extracted goals Ids:", allSiteID);
+
+        return allSiteID;
+    } catch (error) {
+        console.error("Error while fetching segment ids:", error);
+    }
+    }
+
+    async getAllSegments() {
+        if (this.debug) console.log("Fetching all segments Ids...");
 
         try {
             const method = 'get';
-            const url = 'https://api.kameleoon.com/sites?perPage=100';
+            const url = `https://api.kameleoon.com/segments`;
             const headers = {
                 'Accept': '*/*',
                 'Authorization': `Bearer ${this.access_token}`,
             };
 
             if (this.debug) {
-                console.log("Requesting site IDs with the following details:");
+                console.log("Requesting segments Ids with the following details:");
                 console.log("Headers:", headers);
             }
 
             let response = await this.fetchData(method, url, headers, '');
 
-            if (this.debug) console.log("Response for site IDs:", response);
+            if (this.debug) console.log("Response for segment ids:", response);
 
             let allSiteID: Array<number> = [];
             response.forEach((site) => {
@@ -91,47 +146,16 @@ class AutomationAPI {
                 }
             });
 
-            if (this.debug) console.log("Extracted site IDs:", allSiteID);
+            if (this.debug) console.log("Extracted segment Ids:", allSiteID);
 
             return allSiteID;
         } catch (error) {
-            console.error("Error while fetching site IDs:", error);
+            console.error("Error while fetching segment ids:", error);
         }
     }
 
-    async getAllSiteCode() {
-        if (this.debug) console.log("Fetching all site codes...");
+    async getOneSegment(siteId: number, segmentId: number) {
 
-        try {
-            const method = 'get';
-            const url = 'https://api.kameleoon.com/sites?perPage=100';
-            const headers = {
-                'Accept': '*/*',
-                'Authorization': `Bearer ${this.access_token}`,
-            };
-
-            if (this.debug) {
-                console.log("Requesting site codes with the following details:");
-                console.log("Headers:", headers);
-            }
-
-            let response = await this.fetchData(method, url, headers, '');
-
-            if (this.debug) console.log("Response for site codes:", response);
-
-            let allSiteCode: Array<number> = [];
-            response.forEach((site) => {
-                if (site.code) {
-                    allSiteCode.push(site.code);
-                }
-            });
-
-            if (this.debug) console.log("Extracted site codes:", allSiteCode);
-
-            return allSiteCode;
-        } catch (error) {
-            console.error("Error while fetching site codes:", error);
-        }
     }
 
     async createGoal(siteId: number, goals: Array<string>) {
@@ -155,6 +179,54 @@ class AutomationAPI {
                     siteId: siteId,
                     type: 'CUSTOM',
                     hasMultipleConversions: true,
+                });
+
+                if (this.debug) {
+                    console.log("Request payload for goal creation:", data);
+                }
+                let response = await this.fetchData(method, url, headers, data);
+                if (this.debug) console.log("Response for goal creation:", response);
+                returnObject[`${goal}`] = response.id;
+
+                if (this.debug) console.log("Response for goal creation:", response);
+
+                returnObject[`${goal}`] = response.id;
+            } catch (error) {
+                console.error(`Error while creating goal: ${goal}`, error);
+            }
+        }
+
+        if (this.debug) console.log("Final created goals object:", returnObject);
+
+        return returnObject;
+    }
+
+    async createNewAcessToPageGoal(siteId: number, goals: Array<object>, matchType: string) {
+        if (this.debug) console.log("Creating goals for site ID:", siteId);
+
+        const method = 'post';
+        const url = 'https://api.kameleoon.com/goals';
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': '*/*',
+            'Authorization': `Bearer ${this.access_token}`,
+        };
+
+        let returnObject = {};
+        for (const goal of goals) {
+            if (this.debug) console.log(`Creating goal: ${goal}`);
+
+            try {
+                let data = JSON.stringify({
+                    name: `${Object.keys(goal)}`,
+                    siteId: siteId,
+                    type: 'URL',
+                    hasMultipleConversions: true,
+                    params: {
+                        matchString: `${Object.values(goal)}`,
+                        matchType: `${matchType}`
+                    }
+
                 });
 
                 if (this.debug) {
@@ -239,10 +311,6 @@ class AutomationAPI {
         return returnObject;
     }
 
-    async createSegment(siteId: number, segmentConfiguration: segmentConfiguration) {
-
-    }
-
 
     async updateGlobalScript(siteId: number, newGlobalScript: string) {
         if (this.debug) console.log("Updating Global Script for site : ", siteId);
@@ -281,44 +349,6 @@ class AutomationAPI {
 
         } catch (error) {
             console.error("Error during global script update:", error);
-        }
-    }
-
-
-
-
-
-    // Helper functions
-    private resetConfig() {
-        if (this.debug) console.log("Resetting config...");
-        this.config = {
-            method: '',
-            url: '',
-            headers: {},
-            data: '',
-            maxBodyLength: Infinity,
-        };
-    }
-
-    private async fetchData(method, url, headers, data) {
-        this.resetConfig();
-        this.config = { method, url, headers, data };
-        this.config['maxBodyLength'] = Infinity;
-
-        if (this.debug) {
-            console.log("Fetching data with the following config:");
-            console.log(this.config);
-        }
-
-        try {
-            let response = await axios(this.config);
-
-            if (this.debug) console.log("Fetch response data:", response.data);
-
-            return response.data;
-        } catch (error) {
-            console.error("Error during fetch operation:", error);
-            throw error;
         }
     }
 }
